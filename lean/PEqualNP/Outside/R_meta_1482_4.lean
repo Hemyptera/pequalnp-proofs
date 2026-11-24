@@ -5,24 +5,28 @@ open PEqualNP.CircuitLowerBounds PEqualNP.MetaComplexity
 open PEqualNP.MetaComplexity.NestedCover PEqualNP.EdgeOwnership PEqualNP.TopForm
 
 theorem PEqualNP.Outside.R_meta_1482_4
-    (h1 : let G : SimpleGraph (Fin 26) := SimpleGraph.fromRel (fun a b : Fin 26 =>
-        a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ({0, 1, 3, 9} : Finset ℕ))
-      ¬ ∃ C : Circuit, C.size ≤ 64 ∧ IsAO2 26 C ∧ circuitFun 26 C = graphFun G ∅ ∧
+    (h1 : ¬ ∃ C : Circuit, C.size ≤ 64 ∧ IsAO2 26 C ∧
+        circuitFun 26 C = graphFun (SimpleGraph.fromRel (fun a b : Fin 26 =>
+          a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ([0, 1, 3, 9] : List ℕ))) ∅ ∧
         ∃ i j : ℕ, i < C.gates.length ∧ j < C.gates.length ∧
-          (gateAt C i).op = GateOp.and ∧ BelowF G C i ∧
+          (gateAt C i).op = GateOp.and ∧
+          BelowF (SimpleGraph.fromRel (fun a b : Fin 26 =>
+            a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ([0, 1, 3, 9] : List ℕ))) C i ∧
           (gateAt C j).op = GateOp.and ∧ InCone 26 C i j ∧
           (26 + j = C.output ∨ InCone 26 C j (C.output - 26)))
-    (h2 : let G : SimpleGraph (Fin 26) := SimpleGraph.fromRel (fun a b : Fin 26 =>
-        a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ({0, 1, 3, 9} : Finset ℕ))
-      ¬ ∃ C : Circuit, C.size ≤ 64 ∧ IsAO2 26 C ∧ circuitFun 26 C = graphFun G ∅ ∧
+    (h2 : ¬ ∃ C : Circuit, C.size ≤ 64 ∧ IsAO2 26 C ∧
+        circuitFun 26 C = graphFun (SimpleGraph.fromRel (fun a b : Fin 26 =>
+          a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ([0, 1, 3, 9] : List ℕ))) ∅ ∧
         ∃ i j : ℕ, i < C.gates.length ∧ j < C.gates.length ∧
-          (gateAt C i).op = GateOp.and ∧ ¬ BelowF G C i ∧
+          (gateAt C i).op = GateOp.and ∧
+          ¬ BelowF (SimpleGraph.fromRel (fun a b : Fin 26 =>
+            a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ([0, 1, 3, 9] : List ℕ))) C i ∧
           (gateAt C j).op = GateOp.and ∧ InCone 26 C i j ∧
           (26 + j = C.output ∨ InCone 26 C j (C.output - 26))) :
     ¬ (∃ C : PEqualNP.CircuitLowerBounds.Circuit, C.size ≤ 64 ∧ (∀ (j : ℕ) (g : PEqualNP.CircuitLowerBounds.Gate), C.gates[j]? = some g → (g.op = PEqualNP.CircuitLowerBounds.GateOp.and ∨ g.op = PEqualNP.CircuitLowerBounds.GateOp.or) ∧ ∃ a b : ℕ, g.inputs = [a, b] ∧ a ≠ b ∧ a < 26 + j ∧ b < 26 + j) ∧ (∀ x : Fin 26 → Bool, C.eval (List.ofFn x) = true ↔ ∃ u t : Fin 13, (u = t ∨ u = t + 1 ∨ u = t + 3 ∨ u = t + 9) ∧ x (Fin.castAdd 13 u) = true ∧ x (Fin.natAdd 13 t) = true) ∧ ∃ p l : Fin 13, (p = l ∨ p = l + 1 ∨ p = l + 3 ∨ p = l + 9) ∧ (∃ v : ℕ → Bool, (∀ my : Fin 13, v my.val = false ∧ v (13 + my.val) = decide (my = l)) ∧ (∀ (ky : ℕ) (hy : PEqualNP.CircuitLowerBounds.Gate) (cy dy : ℕ), C.gates[ky]? = some hy → hy.inputs = [cy, dy] → (hy.op = PEqualNP.CircuitLowerBounds.GateOp.and → v (26 + ky) = (((C.wires (List.ofFn (fun iy : Fin 26 => decide (iy = Fin.castAdd 13 p)))).getD cy false && v dy) || (v cy && (C.wires (List.ofFn (fun ey : Fin 26 => decide (ey = Fin.castAdd 13 p)))).getD dy false))) ∧ (hy.op = PEqualNP.CircuitLowerBounds.GateOp.or → v (26 + ky) = (v cy || v dy))) ∧ v C.output = false) ∧ (∃ w : ℕ → Bool, (∀ mx : Fin 13, w mx.val = decide (mx = p) ∧ w (13 + mx.val) = false) ∧ (∀ (kx : ℕ) (hx : PEqualNP.CircuitLowerBounds.Gate) (cx dx : ℕ), C.gates[kx]? = some hx → hx.inputs = [cx, dx] → (hx.op = PEqualNP.CircuitLowerBounds.GateOp.and → w (26 + kx) = (((C.wires (List.ofFn (fun ix : Fin 26 => decide (ix = Fin.natAdd 13 l)))).getD cx false && w dx) || (w cx && (C.wires (List.ofFn (fun ex : Fin 26 => decide (ex = Fin.natAdd 13 l)))).getD dx false))) ∧ (hx.op = PEqualNP.CircuitLowerBounds.GateOp.or → w (26 + kx) = (w cx || w dx))) ∧ w C.output = false)) := by
   classical
   let G : SimpleGraph (Fin 26) := SimpleGraph.fromRel (fun a b : Fin 26 =>
-    a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ({0, 1, 3, 9} : Finset ℕ))
+    a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ([0, 1, 3, 9] : List ℕ))
   rintro ⟨C, hsz, hstruct, hfun, p, l, hpl, ⟨v, hv_init, hv_gate, hv_out⟩, _⟩
   have hgateAt : ∀ j, gateAt C j = C.gates.getD j ⟨GateOp.or, []⟩ := fun _ => rfl
   have hgraphFun : ∀ x, graphFun G ∅ x =
@@ -54,7 +58,7 @@ theorem PEqualNP.Outside.R_meta_1482_4
       simp [hin]
   have hinc_iff : ∀ u t : Fin 13,
       (u = t ∨ u = t + 1 ∨ u = t + 3 ∨ u = t + 9) ↔
-        (u.val + 13 - t.val) % 13 ∈ ({0, 1, 3, 9} : Finset ℕ) := by
+        (u.val + 13 - t.val) % 13 ∈ ([0, 1, 3, 9] : List ℕ) := by
     decide
   have hcf : circuitFun 26 C = graphFun G ∅ := by
     funext x
