@@ -35,6 +35,12 @@ theorem PEqualNP.Outside.R_meta_1692_3
     ∀ (gates : List PEqualNP.CircuitLowerBounds.Gate) (out : ℕ), (∀ g ∈ gates, (g.op = PEqualNP.CircuitLowerBounds.GateOp.and ∨ g.op = PEqualNP.CircuitLowerBounds.GateOp.or) ∧ g.inputs.length ≤ 2) → (∀ (i : Fin gates.length), ∀ w ∈ (gates.get i).inputs, w < 26 + (i : ℕ)) → (∀ p l : Fin 13, p - l ∈ ({0, 1, 3, 9} : Finset (Fin 13)) → PEqualNP.CircuitLowerBounds.Circuit.eval ⟨gates, out⟩ (List.ofFn (fun u1 : Fin 13 => decide (u1 = p)) ++ List.ofFn (fun v1 : Fin 13 => decide (v1 = l))) = true) → (∀ Q : Finset (Fin 13), Q.card = 4 → (∀ k : Fin 13, (Q.filter (fun u0 : Fin 13 => u0 - k ∈ ({0, 1, 3, 9} : Finset (Fin 13)))).card ≤ 2) → PEqualNP.CircuitLowerBounds.Circuit.eval ⟨gates, out⟩ (List.ofFn (fun u2 : Fin 13 => decide (u2 ∈ Q)) ++ List.ofFn (fun v2 : Fin 13 => decide (∀ r ∈ Q, r - v2 ∉ ({0, 1, 3, 9} : Finset (Fin 13))))) = false) → 64 ≤ gates.length := by
   classical
   intro gates out hops hreads hpos hneg
+  have evalAnd : ∀ l : List Bool, GateOp.and.eval l = l.all id := fun _ => rfl
+  have evalOr : ∀ l : List Bool, GateOp.or.eval l = l.any id := fun _ => rfl
+  have hquadDef : quadrangles singerLines3 =
+      (Finset.univ.powersetCard 4).filter fun Q => ∀ l : Fin 13, (Q ∩ singerLines3 l).card ≤ 2 := rfl
+  have hmissDef : ∀ Q, missLines singerLines3 Q =
+      Finset.univ.filter fun l => Disjoint (singerLines3 l) Q := fun _ => rfl
   let step : List Bool → Gate → List Bool := fun w g =>
     w ++ [g.op.eval (g.inputs.map fun i => w.getD i false)]
   have hstep_len : ∀ (gs : List Gate) (w : List Bool),
@@ -239,7 +245,9 @@ theorem PEqualNP.Outside.R_meta_1692_3
         match h.op with
         | GateOp.and => if c then ⟨GateOp.and, (h.inputs.filter (fun w => decide (w ≠ 26 + k))).map shift⟩ else ⟨GateOp.or, []⟩
         | GateOp.or => if c then ⟨GateOp.and, []⟩ else ⟨GateOp.or, (h.inputs.filter (fun w => decide (w ≠ 26 + k))).map shift⟩
-        | _ => ⟨h.op, h.inputs.map shift⟩
+        | GateOp.not => ⟨h.op, h.inputs.map shift⟩
+        | GateOp.mod _ => ⟨h.op, h.inputs.map shift⟩
+        | GateOp.maj => ⟨h.op, h.inputs.map shift⟩
       else
         ⟨h.op, h.inputs.map shift⟩
     let gs' : List Gate := gs.take k ++ (gs.drop (k + 1)).map xform
@@ -410,7 +418,8 @@ theorem PEqualNP.Outside.R_meta_1692_3
             · rw [if_pos hmem]
               rcases hop with hop | hop <;> rw [hop] <;> dsimp only <;> by_cases hc : c = true
               · rw [if_pos hc]
-                simp only [GateOp.eval, List.map_map]
+                rw [evalAnd, evalAnd]
+                simp only [List.map_map]
                 have hmap : (gs[j + 1].inputs.filter (fun w => decide (w ≠ 26 + k))).map
                     ((fun w => (Circuit.wires ⟨gs', 0⟩ x).getD w false) ∘ shift) =
                     (gs[j + 1].inputs.filter (fun w => decide (w ≠ 26 + k))).map
@@ -423,14 +432,17 @@ theorem PEqualNP.Outside.R_meta_1692_3
                 exact hall_filter _ _ (by rw [hconst x hx, hc])
               · rw [if_neg hc]
                 have hcf : c = false := Bool.eq_false_iff.mpr hc
-                simp only [GateOp.eval, List.map_nil, List.any_nil]
+                rw [evalOr, evalAnd]
+                simp only [List.map_nil, List.any_nil]
                 exact (hall_false _ _ hmem (by rw [hconst x hx, hcf])).symm
               · rw [if_pos hc]
-                simp only [GateOp.eval, List.map_nil, List.all_nil]
+                rw [evalAnd, evalOr]
+                simp only [List.map_nil, List.all_nil]
                 exact (hany_true _ _ hmem (by rw [hconst x hx, hc])).symm
               · rw [if_neg hc]
                 have hcf : c = false := Bool.eq_false_iff.mpr hc
-                simp only [GateOp.eval, List.map_map]
+                rw [evalOr, evalOr]
+                simp only [List.map_map]
                 have hmap : (gs[j + 1].inputs.filter (fun w => decide (w ≠ 26 + k))).map
                     ((fun w => (Circuit.wires ⟨gs', 0⟩ x).getD w false) ∘ shift) =
                     (gs[j + 1].inputs.filter (fun w => decide (w ≠ 26 + k))).map
@@ -506,7 +518,9 @@ theorem PEqualNP.Outside.R_meta_1692_3
               (Circuit.wires ⟨gs, 0⟩ x).getD (26 + k) false = (Circuit.wires ⟨gs, 0⟩ x).getD a false := by
             intro x hx
             rw [hwire_gate gs x k g hx hgk hrb, hin]
-            rcases hop with hop | hop <;> simp [hop, GateOp.eval]
+            rcases hop with hop | hop
+            · rw [hop, evalAnd]; simp
+            · rw [hop, evalOr]; simp
           obtain ⟨gs', out', hlen', hval', hev'⟩ :=
             helim_alias gs out k a hval hk hout_lt ha halias
           obtain ⟨C', hsz', hstr', hcev'⟩ :=
@@ -525,7 +539,9 @@ theorem PEqualNP.Outside.R_meta_1692_3
               (Circuit.wires ⟨gs, 0⟩ x).getD (26 + k) false = (Circuit.wires ⟨gs, 0⟩ x).getD a false := by
             intro x hx
             rw [hwire_gate gs x k g hx hgk hrb, hin]
-            rcases hop with hop | hop <;> simp [hop, GateOp.eval]
+            rcases hop with hop | hop
+            · rw [hop, evalAnd]; simp
+            · rw [hop, evalOr]; simp
           obtain ⟨gs', out', hlen', hval', hev'⟩ :=
             helim_alias gs out k a hval hk hout_lt ha halias
           obtain ⟨C', hsz', hstr', hcev'⟩ :=
@@ -567,7 +583,8 @@ theorem PEqualNP.Outside.R_meta_1692_3
       C'.eval (List.ofFn (fun u : Fin 13 => decide (u ∈ Q)) ++
         List.ofFn (fun v : Fin 13 => decide (v ∈ missLines singerLines3 Q))) = false := by
     intro Q hQ
-    simp only [quadrangles, Finset.mem_filter, Finset.mem_powersetCard, Finset.subset_univ,
+    rw [hquadDef] at hQ
+    simp only [Finset.mem_filter, Finset.mem_powersetCard, Finset.subset_univ,
       true_and] at hQ
     have hcol : ∀ k : Fin 13,
         (Q.filter (fun u0 : Fin 13 => u0 - k ∈ ({0, 1, 3, 9} : Finset (Fin 13)))).card ≤ 2 := by
@@ -581,7 +598,8 @@ theorem PEqualNP.Outside.R_meta_1692_3
         (fun v2 : Fin 13 => decide (∀ r ∈ Q, r - v2 ∉ ({0, 1, 3, 9} : Finset (Fin 13)))) := by
       funext v
       apply decide_eq_decide.mpr
-      simp only [missLines, Finset.mem_filter, Finset.mem_univ, true_and, Finset.disjoint_right]
+      rw [hmissDef]
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.disjoint_right]
       constructor
       · intro h r hr hrv
         exact h hr ((hmem_singer r v).mpr hrv)
