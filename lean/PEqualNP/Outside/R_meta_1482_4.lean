@@ -24,6 +24,17 @@ theorem PEqualNP.Outside.R_meta_1482_4
   let G : SimpleGraph (Fin 26) := SimpleGraph.fromRel (fun a b : Fin 26 =>
     a.val < 13 ∧ 13 ≤ b.val ∧ (a.val + 13 - (b.val - 13)) % 13 ∈ ({0, 1, 3, 9} : Finset ℕ))
   rintro ⟨C, hsz, hstruct, hfun, p, l, hpl, ⟨v, hv_init, hv_gate, hv_out⟩, _⟩
+  have hgateAt : ∀ j, gateAt C j = C.gates.getD j ⟨GateOp.or, []⟩ := fun _ => rfl
+  have hgraphFun : ∀ x, graphFun G ∅ x =
+      (decide (∃ a ∈ (∅ : Finset (Fin 26)), x a = true) ||
+        decide (∃ u v, G.Adj u v ∧ x u = true ∧ x v = true)) := fun _ => rfl
+  have hconeStep : ∀ cs g, coneStep 26 cs g =
+      cs ++ [(g.inputs.filter (fun w => decide (26 ≤ w ∧ w < 26 + cs.length))).flatMap
+        (fun w => (w - 26) :: cs.getD (w - 26) [])] := fun _ _ => rfl
+  have evalAnd : ∀ a b : Bool, GateOp.and.eval [a, b] = (a && b) :=
+    fun a b => by cases a <;> cases b <;> rfl
+  have evalOr : ∀ a b : Bool, GateOp.or.eval [a, b] = (a || b) :=
+    fun a b => by cases a <;> cases b <;> rfl
   have hAO : IsAO2 26 C := by
     refine ⟨?_, ?_, ?_⟩
     · intro g hg
@@ -31,7 +42,7 @@ theorem PEqualNP.Outside.R_meta_1482_4
       exact (hstruct j _ (List.getElem?_eq_getElem hj)).1
     · intro j hj w hw
       have hga : gateAt C j = C.gates[j] := by
-        simp [gateAt, List.getD_eq_getElem?_getD, hj]
+        simp [hgateAt, List.getD_eq_getElem?_getD, hj]
       rw [hga] at hw
       obtain ⟨a, b, hin, _, ha, hb⟩ := (hstruct j _ (List.getElem?_eq_getElem hj)).2
       rw [hin] at hw
@@ -50,7 +61,8 @@ theorem PEqualNP.Outside.R_meta_1482_4
     apply Bool.eq_iff_iff.mpr
     change C.eval (List.ofFn x) = true ↔ graphFun G ∅ x = true
     rw [hfun x]
-    simp only [graphFun, Finset.notMem_empty, false_and, exists_false, decide_false,
+    rw [hgraphFun]
+    simp only [Finset.notMem_empty, false_and, exists_false, decide_false,
       Bool.false_or, decide_eq_true_eq]
     constructor
     · rintro ⟨u, t, hut, hxu, hxt⟩
@@ -141,7 +153,7 @@ theorem PEqualNP.Outside.R_meta_1482_4
     | cons g gs ih =>
       intro cs
       rw [List.foldl_cons, ih]
-      simp [coneStep]; omega
+      simp [hconeStep]; omega
   have hcone_keep : ∀ (gs : List Gate) (cs : List (List ℕ)) (i : ℕ), i < cs.length →
       (gs.foldl (coneStep 26) cs).getD i [] = cs.getD i [] := by
     intro gs
@@ -149,8 +161,8 @@ theorem PEqualNP.Outside.R_meta_1482_4
     | nil => intro cs i _; rfl
     | cons g gs ih =>
       intro cs i hi
-      rw [List.foldl_cons, ih _ i (by simp [coneStep]; omega)]
-      simp only [coneStep]
+      rw [List.foldl_cons, ih _ i (by simp [hconeStep]; omega)]
+      simp only [hconeStep]
       exact List.getD_append _ _ _ _ hi
   have hcone_at : ∀ (k : ℕ) (hk : k < C.gates.length),
       (cones 26 C).getD k [] =
@@ -171,12 +183,12 @@ theorem PEqualNP.Outside.R_meta_1482_4
       conv_lhs => rw [hsplit, List.foldl_append, List.foldl_cons]
     have hpre_get : ∀ i < k, (cones 26 C).getD i [] = cpre.getD i [] := by
       intro i hi
-      rw [hc_eq, hcone_keep post _ i (by simp [coneStep, hcpre_len]; omega)]
-      simp only [coneStep]
+      rw [hc_eq, hcone_keep post _ i (by simp [hconeStep, hcpre_len]; omega)]
+      simp only [hconeStep]
       exact List.getD_append _ _ _ _ (by omega)
     conv_lhs => rw [hc_eq]
-    rw [hcone_keep post _ k (by simp [coneStep, hcpre_len])]
-    simp only [coneStep]
+    rw [hcone_keep post _ k (by simp [hconeStep, hcpre_len])]
+    simp only [hconeStep]
     let rhs := (C.gates[k].inputs.filter (fun w => decide (26 ≤ w ∧ w < 26 + cpre.length))).flatMap
       (fun w => (w - 26) :: cpre.getD (w - 26) [])
     have hlast : (cpre ++ [rhs]).getD k [] = rhs := by
@@ -336,7 +348,7 @@ theorem PEqualNP.Outside.R_meta_1482_4
       rw [hk1_epl, hor] at heval_epl
       rw [hk1_ep, hor] at heval_ep
       rw [hk1_v] at hv_or
-      simp only [GateOp.eval, List.any_cons, List.any_nil, id_eq, Bool.or_false] at heval_epl heval_ep
+      rw [evalOr] at heval_epl heval_ep
       have ⟨hvc, hvd⟩ := Bool.or_eq_false_iff.mp hv_or.symm
       have ⟨hep_c, hep_d⟩ := Bool.or_eq_false_iff.mp heval_ep.symm
       rcases (Bool.or_eq_true _ _).mp heval_epl.symm with hce | hde
@@ -350,7 +362,7 @@ theorem PEqualNP.Outside.R_meta_1482_4
   rw [hk1_v] at hk1_v_and
   change false = (((C.wires (List.ofFn ep)).getD c false && v d) ||
     (v c && (C.wires (List.ofFn ep)).getD d false)) at hk1_v_and
-  simp only [GateOp.eval, List.all_cons, List.all_nil, id_eq, Bool.and_true] at hk1_epl_eq hk1_ep_eq
+  rw [evalAnd] at hk1_epl_eq hk1_ep_eq
   have ⟨hc_epl, hd_epl⟩ := (Bool.and_eq_true _ _).mp hk1_epl_eq.symm
   have hc_ep : (C.wires (List.ofFn ep)).getD c false = false := by
     cases hc : (C.wires (List.ofFn ep)).getD c false with
@@ -418,22 +430,22 @@ theorem PEqualNP.Outside.R_meta_1482_4
         · exfalso
           have hev := hwire_gate el j hj_lt C.gates[j] a b hj_some hj_in ha_lt hb_lt
           rw [hj_el, hor] at hev
-          simp only [GateOp.eval, List.any_cons, List.any_nil, id_eq, Bool.or_false] at hev
+          rw [evalOr] at hev
           rw [hj_in] at hwin
           simp only [List.mem_cons, List.not_mem_nil, or_false] at hwin
           rcases hwin with rfl | rfl
           · rw [hw_el, Bool.true_or] at hev; exact Bool.false_ne_true hev
           · rw [hw_el, Bool.or_true] at hev; exact Bool.false_ne_true hev
       refine ⟨k1, j, hk1_lt, hj_lt, ?_, ?_, hj_cone, ?_⟩
-      · simpa [gateAt, List.getD_eq_getElem?_getD, hk1_lt] using hk1_and
-      · simpa [gateAt, List.getD_eq_getElem?_getD, hj_lt] using hj_and
+      · simpa [hgateAt, List.getD_eq_getElem?_getD, hk1_lt] using hk1_and
+      · simpa [hgateAt, List.getD_eq_getElem?_getD, hj_lt] using hj_and
       · rcases hj_reach with hj_eq | hcj
         · left; rw [hj_eq]; exact houtG_eq
         · right; exact hcj
     | false =>
       have hk1_el_eq := hwire_gate el k1 hk1_lt C.gates[k1] c d hk1_some hk1_in hc_lt hd_lt
       rw [hk1_el, hk1_and] at hk1_el_eq
-      simp only [GateOp.eval, List.all_cons, List.all_nil, id_eq, Bool.and_true] at hk1_el_eq
+      rw [evalAnd] at hk1_el_eq
       have hno_in_Q : ∀ w < 26, (C.wires (List.ofFn epl)).getD w false = true →
           (C.wires (List.ofFn ep)).getD w false = false →
           (C.wires (List.ofFn el)).getD w false = false → False := by
@@ -484,7 +496,7 @@ theorem PEqualNP.Outside.R_meta_1482_4
           rw [hi_epl, hor] at hepl_i
           rw [hi_ep, hor] at hep_i
           rw [hi_el, hor] at hel_i
-          simp only [GateOp.eval, List.any_cons, List.any_nil, id_eq, Bool.or_false] at hepl_i hep_i hel_i
+          rw [evalOr] at hepl_i hep_i hel_i
           have ⟨hap, hbp⟩ := Bool.or_eq_false_iff.mp hep_i.symm
           have ⟨hal, hbl⟩ := Bool.or_eq_false_iff.mp hel_i.symm
           have hpick : ∃ w, w ∈ C.gates[i].inputs ∧ w < 26 + i ∧
@@ -504,8 +516,8 @@ theorem PEqualNP.Outside.R_meta_1482_4
             exact Nat.find_min hR_ex (show w - 26 < i by omega)
               ⟨by omega, hck, by rwa [hw_eq], by rwa [hw_eq], by rwa [hw_eq]⟩
       refine ⟨i, k1, hi_lt, hk1_lt, ?_, ?_, hi_cone, ?_⟩
-      · simpa [gateAt, List.getD_eq_getElem?_getD, hi_lt] using hi_and
-      · simpa [gateAt, List.getD_eq_getElem?_getD, hk1_lt] using hk1_and
+      · simpa [hgateAt, List.getD_eq_getElem?_getD, hi_lt] using hi_and
+      · simpa [hgateAt, List.getD_eq_getElem?_getD, hk1_lt] using hk1_and
       · rcases hk1_reach with hk1_eq | hck
         · left; rw [hk1_eq]; exact houtG_eq
         · right; exact hck
